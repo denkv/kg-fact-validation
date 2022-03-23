@@ -1,0 +1,7 @@
+appdirs==1.4.4
+ray[tune]==1.0.1.post1
+scikit-learn==1.0.2
+
+# https://pytorch.org/get-started/locally/
+--find-links https://download.pytorch.org/whl/lts/1.8/torch_lts.html
+torch==1.8.2+cu111

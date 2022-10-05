@@ -42,17 +42,25 @@ class FCNN(nn.Module):
     def __init__(self, in_features=100, layer1_size=512, layer1_activation=nn.ReLU, layer2_size=256, layer2_activation=nn.ReLU, activation=nn.Sigmoid):
         super(FCNN, self).__init__()
 
+        layer1 = nn.Linear(in_features=in_features, out_features=layer1_size)
+        nn.init.xavier_uniform_(layer1.weight, gain=1)
+        nn.init.constant_(layer1.bias, 0)
         modules = [
-            nn.Linear(in_features=in_features, out_features=layer1_size), # input → 1st
+            layer1, # input → 1st
             nn.Dropout(p=0.5),
+            nn.BatchNorm1d(num_features=layer1_size),
             layer1_activation(),
             nn.Linear(layer1_size, layer2_size if layer2_size > 0 else 1), # 1st → 2nd
         ]
         if layer2_size > 0:
+            layer2 = nn.Linear(layer2_size, 1)
+            nn.init.xavier_uniform_(layer2.weight, gain=1)
+            nn.init.constant_(layer2.bias, 0)
             modules += [
                 nn.Dropout(p=0.5),
+                nn.BatchNorm1d(num_features=layer2_size),
                 layer2_activation(),
-                nn.Linear(layer2_size, 1), # 2nd → output
+                layer2, # 2nd → output
             ]
         modules += [
             activation(),
@@ -142,16 +150,16 @@ def train(config, data_path, embeddings, dataset: str, epochs=10_000, device='cp
 def tuning(data_path, embeddings, dataset, name, device, resume=False, max_epochs=100_000):
     config = dict(
         in_features=3 * 16 * 25, # train_data[0].shape[1],
-        learning_rate=tune.grid_search([0.01, 0.05, 0.1]),
-        weight_decay=tune.grid_search([0, 0.000_000_1, 0.000_001]),
-        layer1_size=tune.grid_search([512, 1024, 2048]),
-        layer1_activation=tune.grid_search([nn.LeakyReLU, nn.Softplus, nn.Tanh]),
-        layer2_size=tune.grid_search([0, 64, 128, 256]),
-        layer2_activation=tune.grid_search([nn.LeakyReLU, nn.Softplus, nn.Tanh]),
+        learning_rate=tune.loguniform(0.000_1, 0.1),
+        weight_decay=tune.loguniform(0.000_000_1, 0.000_1),
+        layer1_size=tune.grid_search([128, 256, 512, 1024]),
+        layer1_activation=tune.grid_search([nn.ReLU, nn.LeakyReLU]),
+        layer2_size=tune.grid_search([0]),
+        layer2_activation=tune.grid_search([nn.ReLU, nn.LeakyReLU]),
         activation=nn.Sigmoid,
     )
 
-    scheduler = ASHAScheduler(max_t=max_epochs, grace_period=max_epochs / 100, reduction_factor=2)
+    scheduler = ASHAScheduler(max_t=max_epochs, grace_period=50, reduction_factor=2)
     reporter = CLIReporter(
         metric_columns=['valid_loss', 'accuracy', 'roc_auc', 'training_iteration'],
         max_report_frequency=120,

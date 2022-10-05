@@ -108,7 +108,7 @@ class SedWrapper():
 
         # Most of that needs to be set but does not matter in this task.
         con = Config()
-        con.set_in_path(os.path.join(os.path.dirname(__file__), '../quate/benchmarks/' + dataset.upper() + '/'))
+        con.set_in_path(os.path.join(os.path.dirname(__file__), '../quate/benchmarks/' + dataset.upper().replace('-', '') + '/'))
         con.set_work_threads(8)
         con.set_nbatches(10)
         con.set_alpha(0.1)
